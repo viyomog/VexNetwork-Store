@@ -42,6 +42,7 @@ app.use(cors({
 app.use(express.json());
 
 // API Rate Limiting
+app.set('trust proxy', 1);
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 150, // limit each IP to 150 requests per windowMs
