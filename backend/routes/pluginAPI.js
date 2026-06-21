@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PendingCommand = require('../models/PendingCommand');
+const Order = require('../models/Order');
 
 // In a real application, you should store this secret in .env
 // For this tutorial/project, we'll read it from env or default it
@@ -40,8 +41,20 @@ router.post('/ack-commands', authenticatePlugin, async (req, res) => {
       return res.status(400).json({ error: 'Invalid payload' });
     }
 
+    // Fetch commands to get their orderIds before deleting
+    const commandsToAck = await PendingCommand.find({ _id: { $in: commandIds } });
+    const orderIds = [...new Set(commandsToAck.map(cmd => cmd.orderId).filter(id => id))];
+
     // Delete the commands that have been executed successfully
     await PendingCommand.deleteMany({ _id: { $in: commandIds } });
+    
+    // Update the associated orders to 'delivered'
+    if (orderIds.length > 0) {
+      await Order.updateMany(
+        { orderId: { $in: orderIds } },
+        { $set: { deliveryStatus: 'delivered' } }
+      );
+    }
     
     res.json({ success: true, acknowledged: commandIds.length });
   } catch (err) {
