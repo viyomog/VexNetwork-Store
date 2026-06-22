@@ -18,7 +18,9 @@ const Products = () => {
     name: '',
     price: 0,
     category: 'survival-rank',
+    targetServer: 'global',
     color: '#9333EA',
+    imageUrl: '',
     description: '',
     features: '', // We will parse this to array
     infoDetails: {
@@ -94,7 +96,9 @@ const Products = () => {
         name: product.name,
         price: product.price,
         category: product.category,
+        targetServer: product.targetServer || 'global',
         color: product.color || '#9333EA',
+        imageUrl: product.imageUrl || '',
         description: product.description,
         features: product.features ? product.features.join('\n') : '',
         infoDetails: {
@@ -109,11 +113,37 @@ const Products = () => {
     } else {
       setEditingProduct(null);
       setFormData({
-        name: '', price: 0, category: 'survival-rank', color: '#9333EA', description: '',
+        name: '', price: 0, category: 'survival-rank', targetServer: 'global', color: '#9333EA', imageUrl: '', description: '',
         features: '', infoDetails: { perks: '', commands: '', others: '', note: '', kitPreviewImg: '' }, active: true
       });
     }
     setShowModal(true);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const uploadData = new FormData();
+    uploadData.append('image', file);
+
+    const toastId = toast.loading('Uploading image...');
+    try {
+      const token = localStorage.getItem('admin_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${apiUrl}/api/upload`, uploadData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      setFormData(prev => ({ ...prev, imageUrl: res.data.imageUrl }));
+      toast.dismiss(toastId);
+      toast.success('Image uploaded successfully');
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error(err.response?.data?.error || 'Failed to upload image');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -271,6 +301,14 @@ const Products = () => {
                   </select>
                 </div>
                 <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Target Server</label>
+                  <select required value={formData.targetServer} onChange={e => setFormData({...formData, targetServer: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', outline: 'none' }}>
+                    <option value="global" style={{ background: '#1f2937', color: '#fff' }}>Global (All Servers)</option>
+                    <option value="survival" style={{ background: '#1f2937', color: '#fff' }}>Survival</option>
+                    <option value="lifesteal" style={{ background: '#1f2937', color: '#fff' }}>Lifesteal</option>
+                  </select>
+                </div>
+                <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Price (₹) *</label>
                   <input required type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff' }} />
                 </div>
@@ -283,9 +321,23 @@ const Products = () => {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Short Description</label>
-                <textarea rows="2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', resize: 'vertical' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Short Description</label>
+                  <textarea rows="4" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff', resize: 'vertical' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Custom Package Image (Optional)</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {formData.imageUrl && (
+                      <div style={{ position: 'relative', width: 'fit-content' }}>
+                        <img src={formData.imageUrl} alt="Package" style={{ height: '60px', borderRadius: '4px' }} />
+                        <button type="button" onClick={() => setFormData({...formData, imageUrl: ''})} style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', borderRadius: '50%', border: 'none', cursor: 'pointer', padding: '2px' }}><X size={14} /></button>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" onChange={handleImageUpload} style={{ width: '100%', padding: '0.5rem', background: 'rgba(0,0,0,0.2)', border: '1px dotted var(--text-muted)', borderRadius: '8px', color: '#fff' }} />
+                  </div>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

@@ -28,7 +28,7 @@ const HeroBanner = () => {
       .catch(() => setMcPlayers(0));
 
     // Fetch Discord Players
-    axios.get('https://discord.com/api/v9/invites/KaD37Nes9M?with_counts=true')
+    axios.get('https://discord.com/api/v9/invites/d6q9ZvC55b?with_counts=true')
       .then(res => {
         if (res.data && res.data.approximate_member_count) {
           setDiscordPlayers(res.data.approximate_member_count);
@@ -112,7 +112,7 @@ const HeroBanner = () => {
           <div 
             className="badge-orange floating-badge" 
             style={{ cursor: 'pointer' }}
-            onClick={() => window.open('https://discord.gg/KaD37Nes9M', '_blank')}
+            onClick={() => window.open('https://discord.gg/d6q9ZvC55b', '_blank')}
           >
             <div>
               <div className="floating-count">{discordPlayers}</div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, ShoppingCart, PackageOpen, CreditCard, Ticket, Gift, Bell, LogOut, Star } from 'lucide-react';
+import { LayoutDashboard, Users, ShoppingCart, PackageOpen, CreditCard, Ticket, Gift, Bell, LogOut, Star, Zap } from 'lucide-react';
 import axios from 'axios';
 import { toast } from '../../utils/toast';
 
@@ -58,7 +58,8 @@ const AdminLayout = () => {
     { name: 'Payments', path: '/user/admin/payments', icon: <CreditCard size={20} />, roles: ['owner'] },
     { name: 'Coupons', path: '/user/admin/coupons', icon: <Ticket size={20} />, roles: ['owner', 'dev'] },
     { name: 'Gift Cards', path: '/user/admin/giftcards', icon: <Gift size={20} />, roles: ['owner', 'dev'] },
-    { name: 'Announcements', path: '/user/admin/announcements', icon: <Bell size={20} />, roles: ['owner', 'dev', 'staff'] }
+    { name: 'Announcements', path: '/user/admin/announcements', icon: <Bell size={20} />, roles: ['owner', 'dev', 'staff'] },
+    { name: 'Flash Sale', path: '/user/admin/flash-sale', icon: <Zap size={20} />, roles: ['owner', 'dev'] }
   ];
 
   return (

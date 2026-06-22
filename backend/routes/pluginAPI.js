@@ -3,11 +3,7 @@ const router = express.Router();
 const PendingCommand = require('../models/PendingCommand');
 const Order = require('../models/Order');
 
-// In a real application, you should store this secret in .env
-// For this tutorial/project, we'll read it from env or default it
-const PLUGIN_SECRET = process.env.PLUGIN_SECRET || 'vexnetwork_secure_secret_123!';
-
-// Middleware to authenticate the plugin
+// The plugin secrets are loaded from environment variables
 const authenticatePlugin = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -15,17 +11,34 @@ const authenticatePlugin = (req, res, next) => {
   }
 
   const token = authHeader.split(' ')[1];
-  if (token !== PLUGIN_SECRET) {
+  
+  const survivalSecret = process.env.SURVIVAL_SECRET || 'survival_secret_123!';
+  const lifestealSecret = process.env.LIFESTEAL_SECRET || 'lifesteal_secret_123!';
+  const globalSecret = process.env.PLUGIN_SECRET || 'vexnetwork_secure_secret_123!';
+
+  let serverConnected = null;
+
+  if (token === survivalSecret) {
+    serverConnected = 'survival';
+  } else if (token === lifestealSecret) {
+    serverConnected = 'lifesteal';
+  } else if (token === globalSecret) {
+    serverConnected = 'global'; // For backwards compatibility or a proxy-wide plugin
+  }
+
+  if (!serverConnected) {
     return res.status(403).json({ error: 'Forbidden: Invalid plugin secret' });
   }
 
+  req.targetServer = serverConnected;
   next();
 };
 
 // GET fetch-commands
 router.get('/fetch-commands', authenticatePlugin, async (req, res) => {
   try {
-    const commands = await PendingCommand.find().limit(50);
+    const filter = req.targetServer === 'global' ? {} : { targetServer: { $in: [req.targetServer, 'global'] } };
+    const commands = await PendingCommand.find(filter).limit(50);
     res.json(commands);
   } catch (err) {
     console.error('Error fetching commands for plugin:', err);

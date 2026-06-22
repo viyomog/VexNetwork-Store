@@ -4,6 +4,7 @@ import axios from 'axios';
 import { User, ShieldCheck, Mail, Phone, Lock, CreditCard, Gift, Trash2, ShoppingCart } from 'lucide-react';
 import { TiArrowBack } from "react-icons/ti";
 import { toast } from '../utils/toast';
+import { useFlashSale } from '../context/FlashSaleContext';
 import '../checkout.css';
 
 const Checkout = () => {
@@ -24,18 +25,25 @@ const Checkout = () => {
   const [giftCardCode, setGiftCardCode] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const [isGift, setIsGift] = useState(false);
+  const [giftUsername, setGiftUsername] = useState('');
+  const { flashSale } = useFlashSale();
 
   const packageId = location.state?.packageId;
   const isCartCheckout = location.state?.isCartCheckout;
 
   useEffect(() => {
+    if (isCartCheckout && cartItems.length === 0) {
+      navigate('/empty-cart');
+      return;
+    }
     if (packageId && !isCartCheckout) {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       axios.get(`${apiUrl}/api/packages/${packageId}`)
         .then(res => setPkg(res.data))
         .catch(err => console.error('Error fetching package:', err));
     }
-  }, [packageId, isCartCheckout]);
+  }, [packageId, isCartCheckout, cartItems, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -88,10 +96,11 @@ const Checkout = () => {
           const { data: verifyData } = await axios.post(verifyUrl, response);
           console.log(verifyData);
           toast.success('Payment Successful! Your purchase will be applied shortly.');
-          navigate('/');
+          navigate('/payment-success', { state: { orderId: verifyData.orderId } });
         } catch (error) {
           console.log(error);
           toast.error('Payment verification failed!');
+          navigate('/payment-failed');
         }
       },
       theme: {
@@ -108,6 +117,9 @@ const Checkout = () => {
     if (!realName || !email || !contact) {
       return toast.error('Please fill out all Customer Information fields.');
     }
+    if (isGift && !giftUsername.trim()) {
+      return toast.error("Please enter your friend's Minecraft Username.");
+    }
     if (!termsAgreed) {
       return toast.error('You must agree to the Terms & Conditions.');
     }
@@ -121,7 +133,11 @@ const Checkout = () => {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const { data } = await axios.post(`${apiUrl}/api/payments/create`, {
         packageId: isCartCheckout ? null : packageId,
-        username,
+        username: isGift ? giftUsername : username,
+        buyerUsername: isGift ? username : null,
+        isGift,
+        email,
+        realName,
         isCartCheckout,
         couponCode,
         giftCardCode: paymentMethod === 'giftcard' ? giftCardCode : null
@@ -129,7 +145,7 @@ const Checkout = () => {
       
       if (data.freeCheckout) {
         toast.success('Payment Successful! Store Credit applied.');
-        navigate('/');
+        navigate('/payment-success', { state: { orderId: data.orderId } });
         return;
       }
       
@@ -145,9 +161,13 @@ const Checkout = () => {
   const handleApplyDiscount = async () => {
     if (!couponCode && (!giftCardCode || paymentMethod !== 'giftcard')) return;
     try {
-      const subtotal = isCartCheckout 
+      const originalSubtotal = isCartCheckout 
         ? cartItems.reduce((sum, item) => sum + (item.price || 0), 0)
         : (pkg?.price || 0);
+
+      const isSaleActive = flashSale && flashSale.active && new Date(flashSale.endTime) > new Date();
+      const flashDiscountAmount = isSaleActive ? originalSubtotal * (flashSale.discountPercent / 100) : 0;
+      const subtotal = originalSubtotal - flashDiscountAmount;
 
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const { data } = await axios.post(`${apiUrl}/api/payments/validate-discount`, {
@@ -211,9 +231,14 @@ const Checkout = () => {
   }
 
   // Calculate Totals and 18% GST Logic
-  const subtotal = isCartCheckout 
+  const isSaleActive = flashSale && flashSale.active && new Date(flashSale.endTime) > new Date();
+  
+  const originalSubtotal = isCartCheckout 
     ? cartItems.reduce((sum, item) => sum + (item.price || 0), 0)
     : (pkg?.price || 0);
+  
+  const flashDiscountAmount = isSaleActive ? originalSubtotal * (flashSale.discountPercent / 100) : 0;
+  const subtotal = originalSubtotal - flashDiscountAmount;
   
   const gstAmount = subtotal * 0.18;
   const storeDiscount = gstAmount; // Discount cancels out GST exactly
@@ -243,8 +268,8 @@ const Checkout = () => {
               cartItems.map((item, idx) => (
                 <div key={`${item._id}-${idx}`} className="checkout-item-card">
                   <div className="checkout-item-details">
-                    <div className="checkout-item-icon">
-                      <ShoppingCart size={24} color="#d8b4fe" />
+                    <div className="checkout-item-icon" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: item.imageUrl ? '0' : '1rem' }}>
+                      {item.imageUrl ? <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '8px' }} /> : <ShoppingCart size={24} color="#d8b4fe" />}
                     </div>
                     <div className="checkout-item-info">
                       <h4 style={{ color: item.color || '#fff' }}>{item.name}</h4>
@@ -252,7 +277,16 @@ const Checkout = () => {
                     </div>
                   </div>
                   <div className="checkout-item-price-remove">
-                    <div className="checkout-item-price">₹{item.price.toFixed(2)}</div>
+                    <div className="checkout-item-price">
+                      {isSaleActive ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.8rem' }}>₹{item.price.toFixed(2)}</span>
+                          <span style={{ color: '#10b981' }}>₹{(item.price - (item.price * (flashSale.discountPercent / 100))).toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        `₹${item.price.toFixed(2)}`
+                      )}
+                    </div>
                     <button className="checkout-item-remove" onClick={() => handleRemoveItem(item._id, idx)}>
                       <Trash2 size={14} /> Remove
                     </button>
@@ -262,8 +296,8 @@ const Checkout = () => {
             ) : (
               <div className="checkout-item-card">
                 <div className="checkout-item-details">
-                  <div className="checkout-item-icon">
-                    <ShoppingCart size={24} color="#d8b4fe" />
+                  <div className="checkout-item-icon" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: pkg?.imageUrl ? '0' : '1rem' }}>
+                    {pkg?.imageUrl ? <img src={pkg.imageUrl} alt={pkg.name} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '8px' }} /> : <ShoppingCart size={24} color="#d8b4fe" />}
                   </div>
                   <div className="checkout-item-info">
                     <h4 style={{ color: pkg?.color || '#fff' }}>{pkg?.name}</h4>
@@ -271,7 +305,16 @@ const Checkout = () => {
                   </div>
                 </div>
                 <div className="checkout-item-price-remove">
-                  <div className="checkout-item-price">₹{pkg?.price.toFixed(2)}</div>
+                  <div className="checkout-item-price">
+                    {isSaleActive ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.8rem' }}>₹{(pkg?.price || 0).toFixed(2)}</span>
+                        <span style={{ color: '#10b981' }}>₹{((pkg?.price || 0) - ((pkg?.price || 0) * (flashSale.discountPercent / 100))).toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      `₹${(pkg?.price || 0).toFixed(2)}`
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -280,8 +323,19 @@ const Checkout = () => {
           <div className="checkout-totals">
             <div className="checkout-total-line">
               <span>Subtotal</span>
-              <span>₹{subtotal.toFixed(2)}</span>
+              <span>
+                {isSaleActive ? (
+                  <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', marginRight: '0.5rem' }}>₹{originalSubtotal.toFixed(2)}</span>
+                ) : null}
+                ₹{subtotal.toFixed(2)}
+              </span>
             </div>
+            {isSaleActive && (
+              <div className="checkout-total-line" style={{ marginTop: '0.5rem', color: '#10b981' }}>
+                <span>Flash Sale Discount ({flashSale.discountPercent}%)</span>
+                <span>-₹{flashDiscountAmount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="checkout-total-line" style={{ marginTop: '0.5rem' }}>
               <span>Taxes & Fees (18% GST)</span>
               <span>₹{gstAmount.toFixed(2)}</span>
@@ -305,6 +359,38 @@ const Checkout = () => {
 
         {/* Right Column: Customer Info & Payment */}
         <div>
+          {/* Gifting Section */}
+          <div className="checkout-section" style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isGift ? '1.5rem' : '0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Gift className="text-orange" />
+                <h2 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 600 }}>Gift a Friend?</h2>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={isGift} onChange={e => setIsGift(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--accent-orange)' }} />
+              </label>
+            </div>
+            
+            {isGift && (
+              <div className="animate-fade-up">
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>Your friend will receive the items in-game, but the receipt will be emailed to you.</p>
+                <div className="checkout-input-group" style={{ marginBottom: 0 }}>
+                  <label>Friend's Minecraft Username *</label>
+                  <div className="checkout-input-wrapper">
+                    <User size={18} className="checkout-input-icon" />
+                    <input 
+                      type="text" 
+                      className="checkout-input" 
+                      placeholder="e.g. Notch"
+                      value={giftUsername}
+                      onChange={e => setGiftUsername(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="checkout-section" style={{ marginBottom: '2rem' }}>
             <div className="checkout-section-title">Customer Information</div>
             

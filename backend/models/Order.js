@@ -13,6 +13,22 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  email: {
+    type: String,
+    required: false
+  },
+  realName: {
+    type: String,
+    required: false
+  },
+  isGift: {
+    type: Boolean,
+    default: false
+  },
+  buyerUsername: {
+    type: String,
+    required: false
+  },
   packageId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Package',

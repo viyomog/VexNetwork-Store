@@ -7,7 +7,10 @@ const Package = require('../models/Package');
 const User = require('../models/User');
 const Coupon = require('../models/Coupon');
 const GiftCard = require('../models/GiftCard');
+const FlashSale = require('../models/FlashSale');
 const PendingCommand = require('../models/PendingCommand');
+const generateInvoice = require('../utils/invoiceGenerator');
+const sendInvoiceEmail = require('../utils/emailSender');
 
 // Helper to process commands
 async function generatePendingCommands(order) {
@@ -29,7 +32,8 @@ async function generatePendingCommands(order) {
             command: parsedCmd,
             username: order.username,
             orderId: order.orderId,
-            packageId: pkg._id
+            packageId: pkg._id,
+            targetServer: pkg.targetServer || 'global'
           });
         }
       }
@@ -80,7 +84,7 @@ router.post('/validate-discount', async (req, res) => {
 // Create Order
 router.post('/create', async (req, res) => {
   try {
-    const { packageId, username, isCartCheckout, couponCode, giftCardCode } = req.body;
+    const { packageId, username, email, realName, isCartCheckout, couponCode, giftCardCode, isGift, buyerUsername } = req.body;
     
     if (!username) {
       return res.status(400).json({ error: 'Username is required' });
@@ -90,8 +94,10 @@ router.post('/create', async (req, res) => {
     let description = '';
     let cartItems = [];
 
+    const cartLookupUsername = isGift ? buyerUsername : username;
+
     if (isCartCheckout) {
-      const user = await User.findOne({ username: new RegExp(`^${username}$`, 'i') }).populate('cart');
+      const user = await User.findOne({ username: new RegExp(`^${cartLookupUsername}$`, 'i') }).populate('cart');
       if (!user || user.cart.length === 0) {
         return res.status(400).json({ error: 'Cart is empty or user not found' });
       }
@@ -112,6 +118,14 @@ router.post('/create', async (req, res) => {
 
     if (amount <= 0) {
       return res.status(400).json({ error: 'Invalid order amount' });
+    }
+
+    // Apply Flash Sale first
+    const flashSale = await FlashSale.findOne();
+    let flashDiscountAmount = 0;
+    if (flashSale && flashSale.active && new Date(flashSale.endTime) > new Date()) {
+      flashDiscountAmount = amount * (flashSale.discountPercent / 100);
+      amount = amount - flashDiscountAmount; // Reduce base amount for coupon
     }
 
     let discount = 0;
@@ -160,20 +174,24 @@ router.post('/create', async (req, res) => {
       const newOrder = new Order({
         orderId: `free_${Date.now()}_${username}`,
         username,
+        email,
+        realName,
         packageId: isCartCheckout ? null : packageId,
         amount: 0,
         isCartCheckout,
         cartItems,
         status: 'paid', // Mark as paid immediately
         couponUsed: couponCode ? couponCode.toUpperCase() : null,
-        giftCardUsed: giftCardCode ? giftCardCode.toUpperCase() : null
+        giftCardUsed: giftCardCode ? giftCardCode.toUpperCase() : null,
+        isGift,
+        buyerUsername
       });
       await newOrder.save();
 
       // Process immediately
       if (isCartCheckout) {
         await User.findOneAndUpdate(
-          { username: new RegExp(`^${username}$`, 'i') },
+          { username: new RegExp(`^${cartLookupUsername}$`, 'i') },
           { $set: { cart: [] } }
         );
       }
@@ -181,6 +199,20 @@ router.post('/create', async (req, res) => {
       if (giftCardCode) await GiftCard.findOneAndUpdate({ code: giftCardCode.toUpperCase() }, { status: 'used' });
 
       await generatePendingCommands(newOrder);
+
+      try {
+        let packagesToProcess = [];
+        if (newOrder.isCartCheckout && newOrder.cartItems && newOrder.cartItems.length > 0) {
+          packagesToProcess = await Package.find({ _id: { $in: newOrder.cartItems } });
+        } else if (newOrder.packageId) {
+          const pkg = await Package.findById(newOrder.packageId);
+          if (pkg) packagesToProcess.push(pkg);
+        }
+        const pdfBuffer = await generateInvoice(newOrder, packagesToProcess);
+        await sendInvoiceEmail(newOrder, pdfBuffer);
+      } catch (emailErr) {
+        console.error("Error generating/sending free invoice:", emailErr);
+      }
 
       return res.json({ freeCheckout: true, orderId: newOrder.orderId });
     }
@@ -201,12 +233,16 @@ router.post('/create', async (req, res) => {
     const newOrder = new Order({
       orderId: order.id,
       username,
+      email,
+      realName,
       packageId: isCartCheckout ? null : packageId,
       amount: finalAmount,
       isCartCheckout,
       cartItems,
       couponUsed: couponCode ? couponCode.toUpperCase() : null,
-      giftCardUsed: giftCardCode ? giftCardCode.toUpperCase() : null
+      giftCardUsed: giftCardCode ? giftCardCode.toUpperCase() : null,
+      isGift,
+      buyerUsername
     });
     await newOrder.save();
 
@@ -246,10 +282,11 @@ router.post('/verify', async (req, res) => {
         { returnDocument: 'after' }
       );
       
-      // If it was a cart checkout, clear the user's cart
+      // If it was a cart checkout, clear the user's cart (use buyerUsername if it's a gift)
       if (order && order.isCartCheckout) {
+        const cartClearUsername = order.isGift ? order.buyerUsername : order.username;
         await User.findOneAndUpdate(
-          { username: new RegExp(`^${order.username}$`, 'i') },
+          { username: new RegExp(`^${cartClearUsername}$`, 'i') },
           { $set: { cart: [] } }
         );
       }
@@ -265,15 +302,55 @@ router.post('/verify', async (req, res) => {
       // Trigger command generation for plugin
       if (order) {
         await generatePendingCommands(order);
+
+        // Generate and Send Invoice
+        try {
+          let packagesToProcess = [];
+          if (order.isCartCheckout && order.cartItems && order.cartItems.length > 0) {
+            packagesToProcess = await Package.find({ _id: { $in: order.cartItems } });
+          } else if (order.packageId) {
+            const pkg = await Package.findById(order.packageId);
+            if (pkg) packagesToProcess.push(pkg);
+          }
+          const pdfBuffer = await generateInvoice(order, packagesToProcess);
+          await sendInvoiceEmail(order, pdfBuffer);
+        } catch (emailErr) {
+          console.error("Error generating/sending invoice:", emailErr);
+        }
       }
       
-      return res.status(200).json({ message: "Payment verified successfully" });
+      return res.status(200).json({ message: "Payment verified successfully", orderId: razorpay_order_id });
     } else {
       return res.status(400).json({ message: "Invalid signature sent!" });
     }
   } catch (error) {
     console.error('Error verifying payment:', error);
     res.status(500).json({ message: "Internal Server Error!" });
+  }
+});
+
+// Download Invoice Route
+router.get('/invoice/:orderId', async (req, res) => {
+  try {
+    const order = await Order.findOne({ orderId: req.params.orderId });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    let packagesToProcess = [];
+    if (order.isCartCheckout && order.cartItems && order.cartItems.length > 0) {
+      packagesToProcess = await Package.find({ _id: { $in: order.cartItems } });
+    } else if (order.packageId) {
+      const pkg = await Package.findById(order.packageId);
+      if (pkg) packagesToProcess.push(pkg);
+    }
+
+    const pdfBuffer = await generateInvoice(order, packagesToProcess);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Invoice_${order.orderId}.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    res.status(500).json({ error: 'Failed to generate invoice' });
   }
 });
 

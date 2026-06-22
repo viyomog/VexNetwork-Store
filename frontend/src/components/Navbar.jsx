@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import LoginModal from './LoginModal';
 import CartModal from './CartModal';
 
-const Navbar = ({ bannerActive }) => {
+const Navbar = () => {
   const [username, setUsername] = useState(localStorage.getItem('mc_username') || null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
@@ -30,7 +30,7 @@ const Navbar = ({ bannerActive }) => {
 
   return (
     <>
-      <div className="navbar-user-btn" style={{ top: bannerActive ? 'calc(1rem + 40px)' : '' }}>
+      <div className="navbar-user-btn">
         {username ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(0,0,0,0.5)', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }} onClick={() => setIsCartModalOpen(true)}>
             <div style={{ textAlign: 'right' }}>

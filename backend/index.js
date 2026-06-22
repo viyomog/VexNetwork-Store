@@ -17,6 +17,8 @@ const adminPaymentsRoutes = require('./routes/adminPayments');
 const adminCouponsRoutes = require('./routes/adminCoupons');
 const adminGiftCardsRoutes = require('./routes/adminGiftCards');
 const adminAnnouncementsRoutes = require('./routes/adminAnnouncements');
+const adminFlashSaleRoutes = require('./routes/adminFlashSale');
+const uploadRoutes = require('./routes/upload');
 const publicDataRoutes = require('./routes/publicData');
 const pluginAPIRoutes = require('./routes/pluginAPI');
 
@@ -71,6 +73,8 @@ app.use('/api/admin/payments', adminPaymentsRoutes);
 app.use('/api/admin/coupons', adminCouponsRoutes);
 app.use('/api/admin/giftcards', adminGiftCardsRoutes);
 app.use('/api/admin/announcements', adminAnnouncementsRoutes);
+app.use('/api/admin/flash-sale', adminFlashSaleRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Public API
 app.use('/api/public', publicDataRoutes);

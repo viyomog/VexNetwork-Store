@@ -108,7 +108,7 @@ const Home = () => {
             <p style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
               Need any questions answered before checkout? Waited more than 20 minutes but your package still has not arrived? Ask the community/staff on Discord, or for payment support, submit a support ticket on our Discord Server. You can also contact us on our Public Contact Email: <a href="mailto:vexnetworrkk@gmail.com" className="text-orange">vexnetworrkk@gmail.com</a>
             </p>
-            <button className="btn-sm bg-orange" onClick={() => window.open('https://discord.gg/KaD37Nes9M', '_blank')}>Discord Server</button>
+            <button className="btn-sm bg-orange" onClick={() => window.open('https://discord.gg/d6q9ZvC55b', '_blank')}>Discord Server</button>
 
             <h2 className="panel-header" style={{ fontSize: '1.2rem', marginTop: '2rem', color: 'var(--accent-red)' }}>REFUND POLICY</h2>
             <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '1.5rem' }}>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { FaDiscord, FaTwitter, FaYoutube, FaHeart } from 'react-icons/fa';
 
 const Footer = () => {
@@ -21,8 +22,8 @@ const Footer = () => {
             <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '1.5rem' }}>
               The ultimate Minecraft experience. Join our community and embark on a journey filled with custom content, amazing features, and endless fun!
             </p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <a href="https://discord.gg/KaD37Nes9M" target="_blank" rel="noreferrer" className="social-icon">
+            <div className="social-links" style={{ display: 'flex', gap: '1rem' }}>
+              <a href="https://discord.gg/d6q9ZvC55b" target="_blank" rel="noreferrer" className="social-icon">
                 <FaDiscord />
               </a>
               <a href="#" className="social-icon">
@@ -37,11 +38,12 @@ const Footer = () => {
           {/* Quick Links */}
           <div>
             <h3 style={{ color: '#fff', marginBottom: '1.5rem', fontSize: '1.2rem' }}>Quick Links</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <a href="/" className="footer-link">Home</a>
-              <a href="/store" className="footer-link">Store</a>
-              <a href="https://discord.gg/KaD37Nes9M" target="_blank" rel="noreferrer" className="footer-link">Support / Discord</a>
-            </div>
+            <ul className="footer-links" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', listStyle: 'none', padding: 0 }}>
+              <li><Link to="/" className="footer-link">Home</Link></li>
+              <li><Link to="/store" className="footer-link">Browse Store</Link></li>
+              <li><Link to="/terms" className="footer-link">Terms & Conditions</Link></li>
+              <li><a href="https://discord.gg/d6q9ZvC55b" target="_blank" rel="noreferrer" className="footer-link">Support / Discord</a></li>
+            </ul>
           </div>
 
           {/* Legal */}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Outlet } from 'react-router-dom';
 import axios from 'axios';
 import { XCircle } from 'lucide-react';
 import Navbar from './components/Navbar';
@@ -13,7 +13,13 @@ import Terms from './pages/Terms';
 import Impressum from './pages/Impressum';
 import Privacy from './pages/Privacy';
 import Category from './pages/Category';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFailed from './pages/PaymentFailed';
+import EmptyCart from './pages/EmptyCart';
 import HeroBanner from './components/HeroBanner';
+import FlashSaleBanner from './components/FlashSaleBanner';
+import { FlashSaleProvider } from './context/FlashSaleContext';
+import NotFound from './pages/NotFound';
 
 // Admin imports
 import AdminLogin from './pages/admin/AdminLogin';
@@ -27,6 +33,7 @@ import Payments from './pages/admin/Payments';
 import Coupons from './pages/admin/Coupons';
 import GiftCards from './pages/admin/GiftCards';
 import Announcements from './pages/admin/Announcements';
+import FlashSaleAdmin from './pages/admin/FlashSale';
 
 const StoreLayout = () => {
   const location = useLocation();
@@ -53,6 +60,7 @@ const StoreLayout = () => {
 
   return (
     <div className="app-container">
+      <FlashSaleBanner />
       {announcements.bannerActive && !isCheckout && (
         <div style={{ background: 'var(--accent-orange)', color: '#fff', textAlign: 'center', padding: '0.75rem', fontWeight: 'bold', zIndex: 1000, position: 'relative', overflow: 'hidden', whiteSpace: 'nowrap' }}>
           <marquee scrollamount="10" behavior="scroll" direction="left" style={{ width: '100%', verticalAlign: 'middle' }}>
@@ -60,19 +68,13 @@ const StoreLayout = () => {
           </marquee>
         </div>
       )}
-      <Navbar bannerActive={announcements.bannerActive && !isCheckout} />
-      {!isCheckout && <HeroBanner />}
-      <main style={{ minHeight: '80vh' }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/store" element={<Store />} />
-          <Route path="/category/:categoryId" element={<Category />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/impressum" element={<Impressum />} />
-          <Route path="/privacy" element={<Privacy />} />
-        </Routes>
-      </main>
+      <div style={{ position: 'relative' }}>
+        <Navbar />
+        {!isCheckout && <HeroBanner />}
+        <main style={{ minHeight: '80vh' }}>
+          <Outlet />
+        </main>
+      </div>
       <Footer />
 
       {showPopup && !isCheckout && (
@@ -106,10 +108,25 @@ function App() {
           <Route path="coupons" element={<Coupons />} />
           <Route path="giftcards" element={<GiftCards />} />
           <Route path="announcements" element={<Announcements />} />
+          <Route path="flash-sale" element={<FlashSaleAdmin />} />
         </Route>
 
-        {/* Catch-all Store Layout */}
-        <Route path="/*" element={<StoreLayout />} />
+        {/* Store Routes within Layout */}
+        <Route element={<FlashSaleProvider><StoreLayout /></FlashSaleProvider>}>
+          <Route path="/" element={<Home />} />
+          <Route path="/store" element={<Store />} />
+          <Route path="/category/:categoryId" element={<Category />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/empty-cart" element={<EmptyCart />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/impressum" element={<Impressum />} />
+          <Route path="/privacy" element={<Privacy />} />
+        </Route>
+
+        {/* 404 Route outside Layout */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

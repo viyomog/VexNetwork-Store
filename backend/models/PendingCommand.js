@@ -15,7 +15,13 @@ const pendingCommandSchema = new mongoose.Schema({
   },
   packageId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Package'
+    ref: 'Package',
+    required: false
+  },
+  targetServer: {
+    type: String,
+    enum: ['global', 'survival', 'lifesteal'],
+    default: 'global'
   },
   createdAt: {
     type: Date,

@@ -20,6 +20,10 @@ const packageSchema = new mongoose.Schema({
     type: String,
     default: '#9333EA'
   },
+  imageUrl: {
+    type: String,
+    required: false
+  },
   category: {
     type: String,
     required: true,
@@ -39,6 +43,11 @@ const packageSchema = new mongoose.Schema({
   isFeatured: {
     type: Boolean,
     default: false
+  },
+  targetServer: {
+    type: String,
+    enum: ['global', 'survival', 'lifesteal'],
+    default: 'global'
   }
 });
 
