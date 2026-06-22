@@ -30,17 +30,18 @@ const Privacy = () => {
 
         <section>
           <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '0.5rem' }}>3. Data Security and Sharing</h2>
-          <p>We implement strict security measures to maintain the safety of your personal information. We do not sell, trade, or rent your personal identification information to others. We securely transmit your payment data to our trusted payment processors (e.g., Razorpay, Stripe); we do not store your raw credit card numbers on our servers.</p>
+          <p>We implement strict security measures to maintain the safety of your personal information. <strong>We do not, and will never, sell your personal data to third parties.</strong> We securely transmit your payment data to our trusted payment processor, <a href="https://razorpay.com/privacy/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-orange)' }}>Razorpay</a>; we do not store your raw credit card numbers on our servers.</p>
         </section>
 
         <section>
-          <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '0.5rem' }}>4. Cookies</h2>
-          <p>Our website may use "cookies" to enhance your user experience, such as keeping you logged into the store with your Minecraft username and retaining your shopping cart contents.</p>
+          <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '0.5rem' }}>4. Data Retention</h2>
+          <p>We retain your order history indefinitely to ensure you always have access to the ranks, coins, and items you purchased. Session data and cookies are temporary and cleared regularly.</p>
         </section>
 
         <section>
-          <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '0.5rem' }}>5. Contact Us</h2>
-          <p>If you have any questions about this Privacy Policy, the practices of this site, or your dealings with this site, please contact us through our official Discord server.</p>
+          <h2 style={{ color: '#fff', fontSize: '1.5rem', marginBottom: '0.5rem' }}>5. Data Deletion & Contact</h2>
+          <p>If you wish to have your data permanently deleted from our servers, or if you have any questions regarding your privacy, please contact our support team at:</p>
+          <p style={{ marginTop: '1rem' }}><a href="mailto:privacy@vexnetwork.fun" style={{ color: 'var(--accent-orange)', fontWeight: 'bold' }}>privacy@vexnetwork.fun</a></p>
         </section>
 
       </div>

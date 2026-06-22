@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const Order = require('../models/Order');
 const Package = require('../models/Package');
 const User = require('../models/User');
@@ -49,17 +50,26 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_key_secret',
 });
 
+// Strict Rate Limiter for Coupons (max 5 requests per minute)
+const couponLimiter = rateLimit({
+  windowMs: 60 * 1000, 
+  max: 5,
+  message: { error: 'Too many coupon attempts. Please wait a minute.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Validate Discount
-router.post('/validate-discount', async (req, res) => {
+router.post('/validate-discount', couponLimiter, async (req, res) => {
   try {
     const { amount, couponCode, giftCardCode } = req.body;
     let discount = 0;
 
     if (couponCode) {
       const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), active: true });
-      if (!coupon) return res.status(400).json({ error: 'Invalid or inactive Coupon' });
-      if (coupon.expiry && new Date(coupon.expiry) < new Date()) return res.status(400).json({ error: 'Coupon expired' });
-      if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) return res.status(400).json({ error: 'Coupon max uses reached' });
+      if (!coupon) return res.status(400).json({ error: 'Invalid Coupon' });
+      if (coupon.expiry && new Date(coupon.expiry) < new Date()) return res.status(400).json({ error: 'Invalid Coupon' });
+      if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) return res.status(400).json({ error: 'Invalid Coupon' });
       if (coupon.minCartValue > amount) return res.status(400).json({ error: `Cart value must be at least ₹${coupon.minCartValue}` });
       
       if (coupon.type === 'percentage') {
@@ -71,7 +81,7 @@ router.post('/validate-discount', async (req, res) => {
 
     if (giftCardCode) {
       const card = await GiftCard.findOne({ code: giftCardCode.toUpperCase(), status: 'active' });
-      if (!card) return res.status(400).json({ error: 'Invalid or inactive Gift Card' });
+      if (!card) return res.status(400).json({ error: 'Invalid Gift Card' });
       discount += card.amount;
     }
 
