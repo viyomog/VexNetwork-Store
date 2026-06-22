@@ -73,14 +73,7 @@ const PackageInfoModal = ({ pkg, imgSrc, onClose, onPurchase }) => {
               </div>
             )}
             
-            {info.commands && info.commands.length > 0 && (
-              <div className="info-section">
-                <h4>Commands:</h4>
-                <ul>
-                  {info.commands.map((cmd, i) => <li key={i}>♦ {cmd}</li>)}
-                </ul>
-              </div>
-            )}
+
             
             {info.others && info.others.length > 0 && (
               <div className="info-section">
