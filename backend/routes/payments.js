@@ -339,50 +339,6 @@ router.post('/verify', async (req, res) => {
   }
 });
 
-// Razorpay Server-to-Server Webhook (Backup Confirmation)
-router.post('/webhook', async (req, res) => {
-  try {
-    const signature = req.headers['x-razorpay-signature'];
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || 'fallback_webhook_secret';
-    
-    // We must use the raw body buffer for mathematically perfect cryptographic hashing
-    const bodyToHash = req.rawBody || JSON.stringify(req.body);
-
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(bodyToHash)
-      .digest('hex');
-
-    if (signature !== expectedSignature) {
-      console.error('Webhook signature mismatch!');
-      return res.status(400).send('Invalid signature');
-    }
-
-    // Since express.json() already parsed the body, we can just use req.body
-    const payload = req.body;
-
-    if (payload.event === 'payment.captured' || payload.event === 'order.paid') {
-      const payment = payload.payload.payment.entity;
-      const orderId = payment.order_id;
-      
-      const order = await Order.findOne({ orderId });
-      if (order && order.status !== 'paid') {
-        // Fallback processing if frontend /verify failed
-        order.status = 'paid';
-        order.paymentId = payment.id;
-        await order.save();
-        
-        await generatePendingCommands(order);
-      }
-    }
-
-    res.status(200).send('Webhook processed');
-  } catch (err) {
-    console.error('Webhook error:', err);
-    res.status(500).send('Webhook Error');
-  }
-});
-
 // Download Invoice Route
 router.get('/invoice/:orderId', async (req, res) => {
   try {

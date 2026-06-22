@@ -41,12 +41,7 @@ app.use(cors({
   },
   credentials: true
 }));
-// Capture raw body for Razorpay Webhook signature verification
-app.use(express.json({
-  verify: (req, res, buf) => {
-    req.rawBody = buf;
-  }
-}));
+app.use(express.json());
 
 // Global Security Headers Middleware
 app.use((req, res, next) => {
